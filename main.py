@@ -1,3 +1,7 @@
+"""
+Main orchestrator for the entire project excluding starting the API endpoint
+"""
+
 import json
 import requests
 import datetime
@@ -7,9 +11,7 @@ from judge import PlacementJudge
 from metadata_manager import MetadataManager
 from logger import clear_logs, log_event, log_routing, log_drift
 
-# ==========================================
-# 1. SETUP & GLOBAL STATE
-# ==========================================
+# SETUP & GLOBAL STATE
 clear_logs()  # Start fresh
 dn = DynamicNormalizer()
 profiler = FieldProfiler()
@@ -33,9 +35,8 @@ else:
 
 ingestion_buffer = []
 
-# ==========================================
-# 2. ROUTING & ADAPTIVE LOGIC
-# ==========================================
+# ROUTING & ADAPTIVE LOGIC
+
 def route_single_record(record, decisions, is_live=False):
     """
     Simulates the routing of data to SQL or MongoDB via logging.
@@ -61,16 +62,15 @@ def route_single_record(record, decisions, is_live=False):
         
         log_routing(record_id, field_path, value, decision)
 
-# ==========================================
-# 3. BATCH FINALIZATION
-# ==========================================
+# BATCH FINALIZATION
+
 def finalize_initial_batch():
     """
     Finalizes the first 1000 records, saves the registry, and flushes logs.
     """
     global ingestion_buffer, current_mode
     log_event("--- BATCH THRESHOLD REACHED (1000) ---")
-    # NEW: Create the buffer_log.txt for the TA
+    # Create the buffer_log.txt for the TA
     print("💾 Saving 1000-record buffer to buffer_log.txt...")
     with open("buffer_log.txt", "w") as f:
         for record in ingestion_buffer:
@@ -98,9 +98,8 @@ def finalize_initial_batch():
     log_event("Transitioned to LIVE mode.")
     print("✅ Initial Registry saved. Buffer flushed. System is now LIVE.")
 
-# ==========================================
-# 4. MAIN INGESTION ENGINE
-# ==========================================
+# MAIN INGESTION ENGINE
+
 def run_pipeline(n_records):
     global current_mode
     API_URL = f"http://127.0.0.1:8000/record/{n_records}"
@@ -149,5 +148,5 @@ def run_pipeline(n_records):
         log_event(f"CRITICAL ERROR: {e}")
 
 if __name__ == "__main__":
-    # Example: Ingest 1200 records (1000 buffer + 200 live)
+    # enter the number of records to be ingested
     run_pipeline(1200)

@@ -1,3 +1,7 @@
+"""
+Final running file for the project. Connects to the API, and once successsfully connected call the main.py to run the orchestrator that manages all other files
+"""
+
 import subprocess
 import time
 import sys

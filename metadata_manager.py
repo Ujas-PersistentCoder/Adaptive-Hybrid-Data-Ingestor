@@ -1,3 +1,11 @@
+"""
+Manages, adds, updates the metadata in the registry.json
+- Serializes stats from sets to lists for JSON storing
+- Writes intitial registry after the initial batch initialisation
+- Updates the registry if at any point after the intial batch any field crosses the thresholds or decision metrics in either way
+- Loads last saved state, to be used in case of shutdowns the metadata wont be lost and can be recovered
+"""
+
 import json
 import os
 import datetime
@@ -17,7 +25,7 @@ class MetadataManager:
 
     def write_initial_registry(self, stats, decisions):
         """
-        Function 1: Called once after the first batch (e.g., 100 records).
+        Called once after the first batch (e.g., 100 records).
         Establishes the baseline knowledge.
         """
         payload = {
@@ -32,7 +40,7 @@ class MetadataManager:
 
     def update_if_changed(self, field_name, current_stats, current_decision):
         """
-        Function 2: Called during the live stream for every record.
+        Called during the live stream for every record.
         Only writes to disk if the DECISION for a field has shifted.
         """
         # 1. Load the current registry to check existing decision

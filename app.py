@@ -1,3 +1,5 @@
+# from simulation_code.py at https://github.com/YogeshKMeena/Course_Resources/tree/main/CS432_Databases/Assignments/T2
+
 from fastapi import FastAPI
 from faker import Faker
 from sse_starlette.sse import EventSourceResponse
@@ -122,6 +124,7 @@ async def stream_records(count: int):
             yield {"event": "record", "data": json.dumps(generate_record())}
     return EventSourceResponse(event_generator())
 
+#activating the API endpoint
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)

@@ -1,3 +1,7 @@
+"""
+Logging functions, logs into the log.txt file
+"""
+
 import datetime
 import os
 
