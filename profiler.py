@@ -14,6 +14,7 @@ class FieldProfiler:
     def __init__(self):
         self.stats = {}
         self.total_records = 0
+        self.unique_values_tracker = {}
 
     def _interpret_value_type(self, value):
         if isinstance(value, (list, tuple)):
@@ -53,11 +54,15 @@ class FieldProfiler:
                     "type_counts": {}, # Track how many times we see each type
                     "count": 0, 
                     "is_nested": False, 
-                    "primary_type": None
+                    "primary_type": None,
+                    "unique_values": set()
                 }
             
             v_type = self._interpret_value_type(value)
             self.stats[key]["count"] += 1
+            if "unique_values" not in self.stats[key]:
+                self.stats[key]["unique_values"] = set()
+            self.stats[key]["unique_values"].add(str(value))
             
             # 1. Update type frequency
             self.stats[key]["type_counts"][v_type] = self.stats[key]["type_counts"].get(v_type, 0) + 1
@@ -86,6 +91,10 @@ class FieldProfiler:
         """
         s = self.stats.get(key)
         if not s: return None
+
+        unique_set = s.get("unique_values", set())
+        unique_count = len(unique_set)
+        cardinality = unique_count / s["count"] if s["count"] > 0 else 0
         
         # Stability is 1.0 only if exactly ONE type was ever seen
         stability = 1.0 if len(s["types_seen"]) == 1 else (1.0 / len(s["types_seen"]))
@@ -95,6 +104,7 @@ class FieldProfiler:
             "field": key,
             "frequency": frequency,
             "stability": stability,
+            "cardinality": cardinality,
             "is_nested": s["is_nested"],
             "types": list(s["types_seen"])
         }

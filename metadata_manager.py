@@ -1,11 +1,3 @@
-"""
-Manages, adds, updates the metadata in the registry.json
-- Serializes stats from sets to lists for JSON storing
-- Writes intitial registry after the initial batch initialisation
-- Updates the registry if at any point after the intial batch any field crosses the thresholds or decision metrics in either way
-- Loads last saved state, to be used in case of shutdowns the metadata wont be lost and can be recovered
-"""
-
 import json
 import os
 import datetime
@@ -15,19 +7,24 @@ class MetadataManager:
         self.filename = filename
 
     def _serialize_stats(self, stats):
-        """Internal helper to convert sets to lists for JSON."""
+        """Internal helper to convert sets to lists and REMOVE large cardinality sets."""
         serializable = {}
         for k, v in stats.items():
+            # Create a shallow copy to avoid modifying the live data
             new_val = v.copy()
+            
+            # 1. Standard serialization for types_seen
             new_val['types_seen'] = list(v['types_seen'])
+            
+            # 2. THE FIX: Remove the large set before JSON serialization
+            # This prevents the "not serializable" error and keeps registry small
+            if 'unique_values' in new_val:
+                del new_val['unique_values']
+                
             serializable[k] = new_val
         return serializable
 
     def write_initial_registry(self, stats, decisions):
-        """
-        Called once after the first batch (e.g., 100 records).
-        Establishes the baseline knowledge.
-        """
         payload = {
             "stats": self._serialize_stats(stats),
             "decisions": decisions,
@@ -39,42 +36,40 @@ class MetadataManager:
         print(f"Initial Registry created with {len(decisions)} fields.")
 
     def update_if_changed(self, field_name, current_stats, current_decision):
-        """
-        Called during the live stream for every record.
-        Only writes to disk if the DECISION for a field has shifted.
-        """
-        # 1. Load the current registry to check existing decision
         state = self.load_state()
         if not state:
-            return
+            return False
 
         old_decision = state['decisions'].get(field_name)
 
-        # 2. Only update if the Judge has changed its mind
         if current_decision != old_decision:
             state['decisions'][field_name] = current_decision
-            state['stats'][field_name] = current_stats.copy()
             
-            state['stats'][field_name]['types_seen'] = list(current_stats['types_seen'])
+            # Serialize the specific field's stats safely
+            serialized_field = current_stats.copy()
+            serialized_field['types_seen'] = list(current_stats['types_seen'])
+            
+            # Ensure unique_values doesn't sneak into the update
+            if 'unique_values' in serialized_field:
+                del serialized_field['unique_values']
+                
+            state['stats'][field_name] = serialized_field
             state['last_drift_update'] = datetime.datetime.now().isoformat()
             
             with open(self.filename, 'w') as f:
                 json.dump(state, f, indent=4)
-            return True # Signal that a change occurred for logging
+            return True
         
         return False
 
     def load_state(self):
-        """Loads knowledge back into memory and handles empty/corrupt files."""
         if os.path.exists(self.filename) and os.path.getsize(self.filename) > 0:
             try:
                 with open(self.filename, 'r') as f:
                     data = json.load(f)
-                    # Convert the lists back into sets for the Profiler
                     for key in data['stats']:
                         data['stats'][key]['types_seen'] = set(data['stats'][key]['types_seen'])
                     return data
             except json.JSONDecodeError:
-                print(f"⚠️ Warning: {self.filename} was corrupt. Starting fresh.")
                 return None
         return None

@@ -83,7 +83,8 @@ def finalize_initial_batch():
     for field_path in profiler.stats.keys():
         metrics = profiler.get_decision_metrics(field_path)
         initial_decisions[field_path] = judge.decide_placement(metrics)
-
+    if 'unique_values' in profiler.stats[field_path]:
+        del profiler.stats[field_path]['unique_values']
     # Save to Disk
     mm.write_initial_registry(profiler.stats, initial_decisions)
     

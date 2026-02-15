@@ -8,14 +8,22 @@ class PlacementJudge:
         self.traceability_fields = ['username', 't_stamp', 'sys_ingested_at']
 
     def decide_placement(self, metrics):
-        field = metrics['field']
-        if field in self.traceability_fields:
-            return "BOTH (Traceability)"
-        if metrics['is_nested']:
-            return "MONGODB (Complex/List)"
-        if metrics['stability'] < self.stability_threshold:
-            return "MONGODB (Unstable/Drifting)"
-        if metrics['frequency'] < self.freq_threshold:
-            return "MONGODB (Rare/Sparse)"
+        field = metrics.get('field', 'unknown')
         
-        return "SQL (Structured/Stable)"
+        # 1. Traceability Check (using your endswith fix)
+        if any(field.endswith(tf) for tf in self.traceability_fields):
+            return "BOTH (Traceability)"
+        
+        # 2. Existing Hard Gates
+        if metrics.get('is_nested') or metrics.get('stability', 0) < self.stability_threshold:
+            return "MONGODB (Complex/Unstable)"
+        
+        if metrics.get('frequency', 0) < self.freq_threshold:
+            return "MONGODB (Sparse)"
+        
+        # 3. Safe Uniqueness Check
+        # If cardinality isn't there, metrics.get returns None (which != 1.0)
+        if metrics.get('cardinality') == 1.0:
+            return "SQL (Unique Identifier)"
+        
+        return "SQL (Standard Column)"
