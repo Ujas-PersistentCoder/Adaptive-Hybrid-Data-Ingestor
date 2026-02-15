@@ -1,0 +1,13 @@
+# Python Virtual Environment
+venv/
+.venv/
+env/
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Project outputs (optional, keep if you want the TA to see them in the repo)
+log.txt
+buffer_log.txt
+registry.json
